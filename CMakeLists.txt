@@ -8,6 +8,14 @@ SET (LEVELDB_MINOR 18)
 
 OPTION (ENABLE_SO_VERSION "Enable shared library version" ON)
 OPTION (LIB_SUFFIX "Installation library directory suffix")
+OPTION (LEVELDB_VERSION "Set leveldb version")
+
+IF (LEVELDB_VERSION)
+    IF (LEVELDB_VERSION MATCHES "([0-9]+)\\.([0-9]+)")
+        SET (LEVELDB_MAJOR ${CMAKE_MATCH_1})
+        SET (LEVELDB_MINOR ${CMAKE_MATCH_2})
+    ENDIF (LEVELDB_VERSION MATCHES "([0-9]+)\\.([0-9]+)")
+ENDIF (LEVELDB_VERSION)
 
 IF (LIB_SUFFIX)
     SET (INSTALL_LIBDIR lib${LIB_SUFFIX})
@@ -18,6 +26,34 @@ ELSE (LIB_SUFFIX STREQUAL "" OR NOT CMAKE_VERSION OR CMAKE_VERSION VERSION_LESS 
     SET(INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR})
 ENDIF(LIB_SUFFIX)
 
+INCLUDE (CheckIncludeFileCXX)
+CHECK_INCLUDE_FILE_CXX ("stdint.h" HAVE_STDINT_H)
+IF (HAVE_STDINT_H)
+    ADD_DEFINITIONS(-DHAVE_STDINT_H=1)
+ENDIF (HAVE_STDINT_H)
+
+CHECK_INCLUDE_FILE_CXX ("inttypes.h" HAVE_INTTYPES_H)
+IF (HAVE_INTTYPES_H)
+    ADD_DEFINITIONS(-DHAVE_INTTYPES_H=1)
+ENDIF (HAVE_INTTYPES_H)
+
+CHECK_INCLUDE_FILE_CXX ("endian.h" HAVE_ENDIAN_H)
+IF (HAVE_ENDIAN_H)
+    ADD_DEFINITIONS(-DHAVE_ENDIAN_H=1)
+ENDIF (HAVE_ENDIAN_H)
+
+INCLUDE (TestBigEndian)
+TEST_BIG_ENDIAN(ENDIAN)
+IF (ENDIAN)
+    ADD_DEFINITIONS (-DCMAKE_BIG_ENDIAN=1)
+ENDIF (ENDIAN)
+
+IF (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "AIX")
+    ADD_DEFINITIONS (-DHAVE_FREAD_UNLOCKED=1)
+    ADD_DEFINITIONS (-DHAVE_FWRITE_UNLOCKED=1)
+    ADD_DEFINITIONS (-DHAVE_FFLUSH_UNLOCKED=1)
+ENDIF (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "AIX")
+
 INCLUDE (CheckCXXCompilerFlag)
 
 # If -std=c++0x works, use <atomic> as fallback for when memory barriers
@@ -26,7 +62,6 @@ CHECK_CXX_COMPILER_FLAG (-std=c++0x HAVE_STD_CXX0X)
 IF (HAVE_STD_CXX0X)
     ADD_DEFINITIONS (-std=c++0x)
 
-    INCLUDE (CheckIncludeFileCXX)
     INCLUDE (CMakePushCheckState)
 
     CMAKE_PUSH_CHECK_STATE (RESET)
@@ -81,6 +116,13 @@ ELSEIF (WIN32)
     IF (CYGWIN)
         ADD_DEFINITIONS (-D_REENTRANT -DOS_LINUX -DCYGWIN)
         SET (LEVELDB_PORT_SOURCES port/port_posix.cc)
+    ELSEIF (MINGW)
+        ADD_DEFINITIONS (-D_REENTRANT -DOS_WINDOWS -DLEVELDB_PLATFORM_WINDOWS -DBOOST_THREAD_USE_LIB -D_WIN32_WINNT=0x0501)
+        SET (LEVELDB_PORT_SOURCES
+            port/port_win.cc
+            util/env_win.cc
+            util/win_logger.cc
+        )
     ENDIF (CYGWIN)
 ELSEIF (APPLE)
     IF ("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
@@ -100,7 +142,6 @@ SET (LEVELDB_SOURCES
     db/dbformat.cc
     db/db_impl.cc
     db/db_iter.cc
-    db/dumpfile.cc
     db/filename.cc
     db/log_reader.cc
     db/log_writer.cc
@@ -126,7 +167,6 @@ SET (LEVELDB_SOURCES
     util/comparator.cc
     util/crc32c.cc
     util/env.cc
-    util/env_posix.cc
     util/filter_policy.cc
     util/hash.cc
     util/histogram.cc
@@ -134,6 +174,13 @@ SET (LEVELDB_SOURCES
     util/options.cc
     util/status.cc
 )
+
+# LEVELDB >= 1.18
+IF ((LEVELDB_MAJOR GREATER 0) AND (LEVELDB_MINOR GREATER 17))
+    LIST (APPEND LEVELDB_SOURCES
+          db/dumpfile.cc
+          util/env_posix.cc)
+ENDIF ((LEVELDB_MAJOR GREATER 0) AND (LEVELDB_MINOR GREATER 17))
 
 ADD_LIBRARY (leveldb SHARED ${LEVELDB_SOURCES} ${LEVELDB_PORT_SOURCES})
 
@@ -150,3 +197,5 @@ INSTALL(TARGETS leveldb
         GROUP_READ GROUP_EXECUTE
         WORLD_READ WORLD_EXECUTE
         ARCHIVE DESTINATION lib${LIB_SUFFIX})
+
+INSTALL (DIRECTORY include/leveldb DESTINATION include)
