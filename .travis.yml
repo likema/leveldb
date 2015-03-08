@@ -9,5 +9,8 @@ sudo: false
 before_install:
 - echo $LANG
 - echo $LC_ALL
+- mkdir build
+- cd build
+- cmake ..
 script:
-- make -j 4 check
+- make
