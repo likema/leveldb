@@ -2,16 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#include <atomic>
-#include <chrono>
 #include <cstdint>
 #include <deque>
 #include <set>
-#include <thread>
 #include <functional>
 #include <memory>
 #include <condition_variable>
-#include <mutex>
 
 #ifdef WIN32
 #include <windows.h>
@@ -65,6 +61,34 @@
 #include <boost/filesystem/convenience.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/lexical_cast.hpp>
+
+#if defined(WIN32) && !defined(_MSC_VER)
+#include <boost/thread.hpp>
+#include <boost/atomic.hpp>
+using boost::mutex;
+using boost::thread;
+using boost::unique_lock;
+using boost::condition_variable;
+using boost::atomic;
+using boost::once_flag;
+using boost::call_once;
+namespace chrono = boost::chrono;
+namespace this_thread = boost::this_thread;
+#else	// defined(WIN32) && !defined(_MSC_VER)
+#include <atomic>
+#include <chrono>
+#include <thread>
+#include <mutex>
+using std::mutex;
+using std::thread;
+using std::unique_lock;
+using std::condition_variable;
+using std::atomic;
+using std::once_flag;
+using std::call_once;
+namespace chrono = std::chrono;
+namespace this_thread = std::this_thread;
+#endif	// defined(WIN32) && !defined(_MSC_VER)
 
 namespace leveldb {
 namespace {
@@ -136,7 +160,7 @@ class PosixRandomAccessFile: public RandomAccessFile {
  private:
   std::string filename_;
   int fd_;
-  mutable std::mutex mu_;
+  mutable mutex mu_;
 
  public:
   PosixRandomAccessFile(const std::string& fname, int fd)
@@ -148,7 +172,7 @@ class PosixRandomAccessFile: public RandomAccessFile {
     Status s;
 #ifdef WIN32
     // no pread on Windows so we emulate it with a mutex
-    std::unique_lock<std::mutex> lock(mu_);
+    unique_lock<mutex> lock(mu_);
 
     if (::_lseeki64(fd_, offset, SEEK_SET) == -1L) {
       return Status::IOError(filename_, strerror(errno));
@@ -255,15 +279,15 @@ class BoostFileLock : public FileLock {
 // any protection against multiple uses from the same process.
 class BoostLockTable {
  private:
-  std::mutex mu_;
+  mutex mu_;
   std::set<std::string> locked_files_;
  public:
   bool Insert(const std::string& fname) {
-    std::unique_lock<std::mutex> l(mu_);
+    unique_lock<mutex> l(mu_);
     return locked_files_.insert(fname).second;
   }
   void Remove(const std::string& fname) {
-    std::unique_lock<std::mutex> l(mu_);
+    unique_lock<mutex> l(mu_);
     locked_files_.erase(fname);
   }
 };
@@ -283,7 +307,7 @@ class PosixEnv : public Env {
           bgthread_.reset();
       }
 
-      std::unique_lock<std::mutex> lock(mu_);
+      unique_lock<mutex> lock(mu_);
       queue_.clear();
   }
 
@@ -425,7 +449,11 @@ class PosixEnv : public Env {
 
   virtual Status LockFile(const std::string& fname, FileLock** lock) {
     *lock = nullptr;
-    std::ofstream of(fname.c_str(), std::ios_base::trunc | std::ios_base::out);
+	std::auto_ptr<BoostFileLock> my_lock(new BoostFileLock());
+    my_lock->name_ = fname;
+
+    std::ofstream &of = my_lock->file_;
+    of.open(fname.c_str(), std::ios_base::trunc | std::ios_base::out);
     if (of.bad()) {
         return Status::IOError("lock " + fname, "cannot create lock file");
     }
@@ -433,17 +461,16 @@ class PosixEnv : public Env {
         of.close();
         return Status::IOError("lock " + fname, "already held by process");
     }
+
     boost::interprocess::file_lock fl(fname.c_str());
     if (!fl.try_lock()) {
         of.close();         
         locks_.Remove(fname);
         return Status::IOError("lock " + fname, "database already in use: could not acquire exclusive lock" );
     }
-    BoostFileLock * my_lock = new BoostFileLock();
-    my_lock->name_ = fname;
-    my_lock->file_ = std::move(of);
-    my_lock->fl_ = std::move(fl);
-    *lock = my_lock;
+
+    my_lock->fl_.swap(fl);
+    *lock = my_lock.release();
     return Status();
   }
 
@@ -512,11 +539,11 @@ class PosixEnv : public Env {
 
   virtual uint64_t NowMicros() {
     return static_cast<uint64_t>(
-        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count());
+        chrono::duration_cast<chrono::microseconds>(chrono::high_resolution_clock::now().time_since_epoch()).count());
   }
 
   virtual void SleepForMicroseconds(int micros) {
-    std::this_thread::sleep_for(std::chrono::microseconds(micros));
+    this_thread::sleep_for(chrono::microseconds(micros));
   }
 
  private:
@@ -535,15 +562,15 @@ class PosixEnv : public Env {
     return NULL;
   }
 
-  std::mutex mu_;
-  std::condition_variable bgsignal_;
-  std::unique_ptr<std::thread> bgthread_;
+  mutex mu_;
+  condition_variable bgsignal_;
+  std::unique_ptr<thread> bgthread_;
 
   // Entry per Schedule() call
   struct BGItem { void* arg; void (*function)(void*); };
   typedef std::deque<BGItem> BGQueue;
   BGQueue queue_;
-  std::atomic<bool> run_bg_thread_;
+  atomic<bool> run_bg_thread_;
 
   BoostLockTable locks_;
 };
@@ -551,13 +578,13 @@ class PosixEnv : public Env {
 PosixEnv::PosixEnv() { }
 
 void PosixEnv::Schedule(void (*function)(void*), void* arg) {
-  std::unique_lock<std::mutex> lock(mu_);
+  unique_lock<mutex> lock(mu_);
 
   // Start background thread if necessary
   if (!bgthread_) {
      run_bg_thread_ = true;
      bgthread_.reset(
-         new std::thread(std::bind(&PosixEnv::BGThreadWrapper, this)));
+         new thread(std::bind(&PosixEnv::BGThreadWrapper, this)));
   }
 
   // Add to priority queue
@@ -576,7 +603,7 @@ void PosixEnv::BGThread() {
     {
         while (run_bg_thread_) {
             // Wait until there is an item that is ready to run
-            std::unique_lock<std::mutex> lock(mu_);
+            unique_lock<mutex> lock(mu_);
 
             while (queue_.empty() && run_bg_thread_) {
                 bgsignal_.wait(lock);
@@ -618,13 +645,13 @@ void PosixEnv::StartThread(void (*function)(void* arg), void* arg) {
   state->user_function = function;
   state->arg = arg;
 
-  std::thread t(std::bind(&StartThreadWrapper, state));
+  thread t(std::bind(&StartThreadWrapper, state));
   t.detach();
 }
 
 }
 
-static std::once_flag once;
+static once_flag once;
 static Env* default_env = nullptr;
 static void InitDefaultEnv() { 
   ::memset(global_read_only_buf, 0, sizeof(global_read_only_buf));
@@ -632,7 +659,7 @@ static void InitDefaultEnv() {
 }
 
 Env* Env::Default() {
-  std::call_once(once, InitDefaultEnv);
+  call_once(once, InitDefaultEnv);
   return default_env;
 }
 

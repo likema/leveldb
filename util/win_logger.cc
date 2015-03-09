@@ -5,6 +5,7 @@
 #include "util/win_logger.h"
 
 #include <windows.h>
+#include <stdio.h>
 
 namespace leveldb {
 
@@ -34,7 +35,11 @@ void WinLogger::Logv(const char* format, va_list ap) {
     // GetSystemTime returns UTC time, we want local time!
     ::GetLocalTime(&st);
 
+#ifdef _MSC_VER
     p += _snprintf_s(p, limit - p, _TRUNCATE,
+#else
+    p += snprintf(p, limit - p,
+#endif
       "%04d/%02d/%02d-%02d:%02d:%02d.%03d %llx ",
       st.wYear,
       st.wMonth,

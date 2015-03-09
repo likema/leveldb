@@ -32,8 +32,12 @@
 #define STORAGE_LEVELDB_PORT_PORT_WIN_H_
 
 #define snprintf _snprintf
+#ifdef _MSC_VER
 #define close _close
 #define fread_unlocked _fread_nolock
+#else	// _MSC_VER
+#define fread_unlocked fread
+#endif	// _MSC_VER
 
 #ifdef SNAPPY
 #include <snappy/snappy.h>
