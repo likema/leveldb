@@ -8,7 +8,13 @@
 #define STORAGE_LEVELDB_DB_TABLE_CACHE_H_
 
 #include <string>
-#include <stdint.h>
+
+#if defined(HAVE_STDINT_H) && HAVE_STDINT_H == 1
+#  include <stdint.h>
+#elif defined(HAVE_INTTYPES_H) && HAVE_INTTYPES_H == 1
+#  include <inttypes.h>
+#endif
+
 #include "db/dbformat.h"
 #include "leveldb/cache.h"
 #include "leveldb/table.h"

@@ -4,7 +4,12 @@
 
 #include "db/log_writer.h"
 
-#include <stdint.h>
+#if defined(HAVE_STDINT_H) && HAVE_STDINT_H == 1
+#  include <stdint.h>
+#elif defined(HAVE_INTTYPES_H) && HAVE_INTTYPES_H == 1
+#  include <inttypes.h>
+#endif
+
 #include "leveldb/env.h"
 #include "util/coding.h"
 #include "util/crc32c.h"

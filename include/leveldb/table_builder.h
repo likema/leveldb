@@ -13,7 +13,12 @@
 #ifndef STORAGE_LEVELDB_INCLUDE_TABLE_BUILDER_H_
 #define STORAGE_LEVELDB_INCLUDE_TABLE_BUILDER_H_
 
-#include <stdint.h>
+#if defined(HAVE_STDINT_H) && HAVE_STDINT_H == 1
+#  include <stdint.h>
+#elif defined(HAVE_INTTYPES_H) && HAVE_INTTYPES_H == 1
+#  include <inttypes.h>
+#endif
+
 #include "leveldb/options.h"
 #include "leveldb/status.h"
 

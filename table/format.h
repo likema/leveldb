@@ -6,7 +6,13 @@
 #define STORAGE_LEVELDB_TABLE_FORMAT_H_
 
 #include <string>
-#include <stdint.h>
+
+#if defined(HAVE_STDINT_H) && HAVE_STDINT_H == 1
+#  include <stdint.h>
+#elif defined(HAVE_INTTYPES_H) && HAVE_INTTYPES_H == 1
+#  include <inttypes.h>
+#endif
+
 #include "leveldb/slice.h"
 #include "leveldb/status.h"
 #include "leveldb/table_builder.h"
