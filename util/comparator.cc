@@ -84,11 +84,4 @@ const Comparator* BytewiseComparator() {
   return bytewise;
 }
 
-void UnsafeDeallocateBytewiseComparator()
-{
-    once = LEVELDB_ONCE_INIT;
-    delete bytewise;
-    bytewise = nullptr;
-}
-
 }  // namespace leveldb

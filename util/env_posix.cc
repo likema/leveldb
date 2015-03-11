@@ -300,7 +300,7 @@ class PosixEnv : public Env {
     PthreadCall("unlock", pthread_mutex_unlock(&mu_));
 
     // wait for thread termination
-    PthreadCall("join", pthread_join(bgthread_, nullptr));
+    PthreadCall("join", pthread_join(bgthread_, NULL));
 
     // anal retentiveness in action
     PthreadCall("lock", pthread_mutex_lock(&mu_));
@@ -574,8 +574,8 @@ void PosixEnv::BGThread() {
       PthreadCall("wait", pthread_cond_wait(&bgsignal_, &mu_));
     }
 
-    void (*function)(void*) = nullptr;
-    void* arg = nullptr;
+    void (*function)(void*) = NULL;
+    void* arg = NULL;
 
     if (running_)
     {
@@ -619,7 +619,7 @@ void PosixEnv::StartThread(void (*function)(void* arg), void* arg) {
 
 static const pthread_once_t init_value = PTHREAD_ONCE_INIT;
 static pthread_once_t once = PTHREAD_ONCE_INIT;
-static Env* default_env = nullptr;
+static Env* default_env = NULL;
 static void InitDefaultEnv() { default_env = new PosixEnv; }
 
 Env* Env::Default() {
@@ -631,7 +631,7 @@ void Env::UnsafeDeallocate()
 {
   once = init_value;
   delete default_env;
-  default_env = nullptr;
+  default_env = NULL;
 }
 
 }  // namespace leveldb
