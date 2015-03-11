@@ -291,9 +291,9 @@ class PosixLockTable {
 class PosixEnv : public Env {
  public:
   PosixEnv();
-  virtual ~PosixEnv() 
+  virtual ~PosixEnv()
   {
-    // signal the thread that we want to stop 
+    // signal the thread that we want to stop
     PthreadCall("lock", pthread_mutex_lock(&mu_));
     running_ = false;
     PthreadCall("signal", pthread_cond_signal(&bgsignal_));
