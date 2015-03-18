@@ -54,7 +54,7 @@ INCLUDE (CheckCXXCompilerFlag)
 # are not available.
 CHECK_CXX_COMPILER_FLAG (-std=c++0x HAVE_STD_CXX0X)
 IF (HAVE_STD_CXX0X)
-    ADD_DEFINITIONS (-std=c++0x)
+    ADD_DEFINITIONS (-std=c++0x -D_GLIBCXX_USE_C99_DYNAMIC=1)
 
     INCLUDE (CMakePushCheckState)
 
