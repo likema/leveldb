@@ -212,7 +212,7 @@ public:
 private:
   void Open() {
     // we truncate the file as implemented in env_posix
-     file_.open(path_.generic_string().c_str(), 
+     file_.open(path_.generic_string().c_str(),
          std::ios_base::trunc | std::ios_base::out | std::ios_base::binary);
      written_ = 0;
   }
@@ -295,14 +295,14 @@ class BoostLockTable {
 class PosixEnv : public Env {
  public:
   PosixEnv();
-  virtual ~PosixEnv() 
+  virtual ~PosixEnv()
   {
       if (bgthread_)
       {
           run_bg_thread_ = false;
-       
+
           bgsignal_.notify_one();
-          
+
           bgthread_->join();
           bgthread_.reset();
       }
@@ -399,7 +399,7 @@ class PosixEnv : public Env {
           boost::filesystem::is_directory(name, ec)) {
         return result;
       }
-      
+
       if (!boost::filesystem::create_directories(name, ec)) {
         result = Status::IOError(name, ec.message());
       }
@@ -464,7 +464,7 @@ class PosixEnv : public Env {
 
     boost::interprocess::file_lock fl(fname.c_str());
     if (!fl.try_lock()) {
-        of.close();         
+        of.close();
         locks_.Remove(fname);
         return Status::IOError("lock " + fname, "database already in use: could not acquire exclusive lock" );
     }
@@ -479,8 +479,8 @@ class PosixEnv : public Env {
   virtual Status UnlockFile(FileLock* lock) {
     BoostFileLock * my_lock = static_cast<BoostFileLock *>(lock);
     Status result;
-    try {      
-      my_lock->fl_.unlock();      
+    try {
+      my_lock->fl_.unlock();
     } catch (const std::exception & e) {
       result = Status::IOError("unlock " + my_lock->name_, e.what());
     }
@@ -496,7 +496,7 @@ class PosixEnv : public Env {
 
   virtual Status GetTestDirectory(std::string* result) {
     boost::system::error_code ec;
-    boost::filesystem::path temp_dir = 
+    boost::filesystem::path temp_dir =
         boost::filesystem::temp_directory_path(ec);
     if (ec != 0) {
       temp_dir = "tmp";
@@ -653,7 +653,7 @@ void PosixEnv::StartThread(void (*function)(void* arg), void* arg) {
 
 static once_flag once;
 static Env* default_env = nullptr;
-static void InitDefaultEnv() { 
+static void InitDefaultEnv() {
   ::memset(global_read_only_buf, 0, sizeof(global_read_only_buf));
   default_env = new PosixEnv;
 }

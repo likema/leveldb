@@ -18,7 +18,11 @@ extern Status WriteStringToFileSync(Env* env, const Slice& data,
 static std::string MakeFileName(const std::string& name, uint64_t number,
                                 const char* suffix) {
   char buf[100];
+#ifdef __MINGW32__
+  __mingw_snprintf(buf, sizeof(buf), "/%06llu.%s",
+#else
   snprintf(buf, sizeof(buf), "/%06llu.%s",
+#endif
            static_cast<unsigned long long>(number),
            suffix);
   return name + buf;

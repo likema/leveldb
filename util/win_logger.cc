@@ -38,7 +38,11 @@ void WinLogger::Logv(const char* format, va_list ap) {
 #ifdef _MSC_VER
     p += _snprintf_s(p, limit - p, _TRUNCATE,
 #else
+#ifdef __MINGW32__
+    p += __mingw_snprintf(p, limit - p,
+#else
     p += snprintf(p, limit - p,
+#endif
 #endif
       "%04d/%02d/%02d-%02d:%02d:%02d.%03d %llx ",
       st.wYear,
@@ -53,7 +57,11 @@ void WinLogger::Logv(const char* format, va_list ap) {
     // Print the message
     if (p < limit) {
       va_list backup_ap = ap;
+#ifdef __MINGW32__
+      p += __mingw_vsnprintf(p, limit - p, format, backup_ap);
+#else
       p += vsnprintf(p, limit - p, format, backup_ap);
+#endif
       va_end(backup_ap);
     }
 
