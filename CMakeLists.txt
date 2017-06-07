@@ -84,6 +84,11 @@ IF (HAVE_WALL)
     ADD_DEFINITIONS (-Wall)
 ENDIF (HAVE_WALL)
 
+CHECK_CXX_COMPILER_FLAG (-msse4.2 HAVE_SSE)
+IF (HAVE_SSE)
+    ADD_DEFINITIONS (-msse4.2 -DLEVELDB_PLATFORM_POSIX_SSE)
+ENDIF (HAVE_SSE)
+
 IF (UNIX)
     IF (HAVE_ATOMIC)
         ADD_DEFINITIONS (-DLEVELDB_PLATFORM_POSIX)
@@ -130,12 +135,14 @@ IF (UNIX)
 
     SET (LEVELDB_PORT_SOURCES
         port/port_posix.cc
+        port/port_posix_sse.cc
         util/env_posix.cc)
 ELSEIF (WIN32)
     IF (CYGWIN)
         ADD_DEFINITIONS (-D_REENTRANT -DOS_LINUX -DCYGWIN)
         SET (LEVELDB_PORT_SOURCES
             port/port_posix.cc
+            port/port_posix_sse.cc
             util/env_posix.cc)
     ELSEIF (MINGW)
         ADD_DEFINITIONS (
@@ -147,7 +154,8 @@ ELSEIF (WIN32)
         SET (LEVELDB_PORT_SOURCES
             port/port_win.cc
             util/env_boost.cc
-            util/win_logger.cc)
+            util/win_logger.cc
+            port/port_posix_sse.cc)
     ENDIF (CYGWIN)
 ENDIF (UNIX)
 
