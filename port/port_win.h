@@ -40,7 +40,7 @@
 #endif	// _MSC_VER
 
 #ifdef SNAPPY
-#include <snappy/snappy.h>
+#include <snappy.h>
 #endif
 
 #include <string>
