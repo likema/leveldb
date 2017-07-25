@@ -16,7 +16,13 @@
 #include <string>
 #include <vector>
 #include <stdarg.h>
-#include <stdint.h>
+
+#if defined(HAVE_STDINT_H) && HAVE_STDINT_H == 1
+#  include <stdint.h>
+#elif defined(HAVE_INTTYPES_H) && HAVE_INTTYPES_H == 1
+#  include <inttypes.h>
+#endif
+
 #include "leveldb/status.h"
 
 namespace leveldb {
@@ -39,6 +45,10 @@ class Env {
   //
   // The result of Default() belongs to leveldb and must never be deleted.
   static Env* Default();
+
+  // use this call to deallocate memory when you know you no longer need it
+  // totally not thread safe but needed to prevent memory analyzers from crying
+  static void UnsafeDeallocate();
 
   // Create a brand new sequentially-readable file with the specified name.
   // On success, stores a pointer to the new file in *result and returns OK.

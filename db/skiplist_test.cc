@@ -254,7 +254,7 @@ class ConcurrentTest {
                     ) << "key: " << key(pos)
                       << "; gen: " << gen(pos)
                       << "; initgen: "
-                      << initial_state.Get(key(pos));
+                      << initial_state.Get(static_cast<int>(key(pos)));
 
         // Advance to next key in the valid key space
         if (key(pos) < key(current)) {

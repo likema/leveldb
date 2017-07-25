@@ -7,7 +7,13 @@
 #include <algorithm>
 #include <set>
 #include <string>
-#include <stdint.h>
+
+#if defined(HAVE_STDINT_H) && HAVE_STDINT_H == 1
+#  include <stdint.h>
+#elif defined(HAVE_INTTYPES_H) && HAVE_INTTYPES_H == 1
+#  include <inttypes.h>
+#endif
+
 #include <stdio.h>
 #include <vector>
 #include "db/builder.h"
@@ -865,7 +871,11 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
 
 Status DBImpl::InstallCompactionResults(CompactionState* compact) {
   mutex_.AssertHeld();
-  Log(options_.info_log,  "Compacted %d@%d + %d@%d files => %lld bytes",
+#ifdef _WIN32
+  Log(options_.info_log,  "Compacted %Iu@%d + %Iu@%d files => %lld bytes",
+#else
+  Log(options_.info_log,  "Compacted %zu@%d + %zu@%d files => %lld bytes",
+#endif
       compact->compaction->num_input_files(0),
       compact->compaction->level(),
       compact->compaction->num_input_files(1),
@@ -888,7 +898,11 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
 
-  Log(options_.info_log,  "Compacting %d@%d + %d@%d files",
+#ifdef _WIN32
+  Log(options_.info_log,  "Compacting %Iu@%d + %Iu@%d files",
+#else
+  Log(options_.info_log,  "Compacting %zu@%d + %zu@%d files",
+#endif
       compact->compaction->num_input_files(0),
       compact->compaction->level(),
       compact->compaction->num_input_files(1),
@@ -1022,7 +1036,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros - imm_micros;
   for (int which = 0; which < 2; which++) {
-    for (int i = 0; i < compact->compaction->num_input_files(which); i++) {
+    for (size_t i = 0; i < compact->compaction->num_input_files(which); i++) {
       stats.bytes_read += compact->compaction->input(which, i)->file_size;
     }
   }
@@ -1395,7 +1409,11 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
       return false;
     } else {
       char buf[100];
-      snprintf(buf, sizeof(buf), "%d",
+#ifdef _WIN32
+      snprintf(buf, sizeof(buf), "%Iu",
+#else
+      snprintf(buf, sizeof(buf), "%zu",
+#endif
                versions_->NumLevelFiles(static_cast<int>(level)));
       *value = buf;
       return true;
@@ -1409,11 +1427,15 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
              );
     value->append(buf);
     for (int level = 0; level < config::kNumLevels; level++) {
-      int files = versions_->NumLevelFiles(level);
+      size_t files = versions_->NumLevelFiles(level);
       if (stats_[level].micros > 0 || files > 0) {
         snprintf(
             buf, sizeof(buf),
-            "%3d %8d %8.0f %9.0f %8.0f %9.0f\n",
+#ifdef _WIN32
+            "%3d %8Iu %8.0f %9.0f %8.0f %9.0f\n",
+#else
+            "%3d %8zu %8.0f %9.0f %8.0f %9.0f\n",
+#endif
             level,
             files,
             versions_->NumLevelBytes(level) / 1048576.0,

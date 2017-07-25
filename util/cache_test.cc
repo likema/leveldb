@@ -11,17 +11,17 @@
 namespace leveldb {
 
 // Conversions between numeric keys/values and the types expected by Cache.
-static std::string EncodeKey(int k) {
+static std::string EncodeKey(intptr_t k) {
   std::string result;
-  PutFixed32(&result, k);
+  PutFixed32(&result, static_cast<uint32_t>(k));
   return result;
 }
 static int DecodeKey(const Slice& k) {
   assert(k.size() == 4);
   return DecodeFixed32(k.data());
 }
-static void* EncodeValue(uintptr_t v) { return reinterpret_cast<void*>(v); }
-static int DecodeValue(void* v) { return reinterpret_cast<uintptr_t>(v); }
+static void* EncodeValue(intptr_t v) { return reinterpret_cast<void*>(v); }
+static intptr_t DecodeValue(void* v) { return reinterpret_cast<intptr_t>(v); }
 
 class CacheTest {
  public:
@@ -45,9 +45,9 @@ class CacheTest {
     delete cache_;
   }
 
-  int Lookup(int key) {
+  intptr_t Lookup(int key) {
     Cache::Handle* handle = cache_->Lookup(EncodeKey(key));
-    const int r = (handle == NULL) ? -1 : DecodeValue(cache_->Value(handle));
+    const intptr_t r = (handle == NULL) ? -1 : DecodeValue(cache_->Value(handle));
     if (handle != NULL) {
       cache_->Release(handle);
     }
@@ -188,10 +188,10 @@ TEST(CacheTest, HeavyEntries) {
     index++;
   }
 
-  int cached_weight = 0;
+  intptr_t cached_weight = 0;
   for (int i = 0; i < index; i++) {
-    const int weight = (i & 1 ? kLight : kHeavy);
-    int r = Lookup(i);
+    const intptr_t weight = (i & 1 ? kLight : kHeavy);
+    intptr_t r = Lookup(i);
     if (r >= 0) {
       cached_weight += weight;
       ASSERT_EQ(1000+i, r);

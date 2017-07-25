@@ -8,11 +8,16 @@
 #define STORAGE_LEVELDB_UTIL_HASH_H_
 
 #include <stddef.h>
-#include <stdint.h>
+
+#if defined(HAVE_STDINT_H) && HAVE_STDINT_H == 1
+#  include <stdint.h>
+#elif defined(HAVE_INTTYPES_H) && HAVE_INTTYPES_H == 1
+#  include <inttypes.h>
+#endif
 
 namespace leveldb {
 
-extern uint32_t Hash(const char* data, size_t n, uint32_t seed);
+extern uint32_t Hash(const void * data, size_t n, uint32_t seed);
 
 }
 

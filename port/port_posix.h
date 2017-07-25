@@ -34,15 +34,25 @@
   // See http://code.google.com/p/android/issues/detail?id=39824
   #include <endian.h>
   #define PLATFORM_IS_LITTLE_ENDIAN  (_BYTE_ORDER == _LITTLE_ENDIAN)
-#else
+#elif defined(HAVE_ENDIAN_H) && HAVE_ENDIAN_H == 1
   #include <endian.h>
+#elif defined(CMAKE_BIG_ENDIAN)
+  #define PLATFORM_IS_LITTLE_ENDIAN false
+#else
+  #define PLATFORM_IS_LITTLE_ENDIAN true
 #endif
 
 #include <pthread.h>
 #ifdef SNAPPY
 #include <snappy.h>
 #endif
-#include <stdint.h>
+
+#if defined(HAVE_STDINT_H) && HAVE_STDINT_H == 1
+#  include <stdint.h>
+#elif defined(HAVE_INTTYPES_H) && HAVE_INTTYPES_H == 1
+#  include <inttypes.h>
+#endif
+
 #include <string>
 #include "port/atomic_pointer.h"
 
@@ -52,7 +62,8 @@
 
 #if defined(OS_MACOSX) || defined(OS_SOLARIS) || defined(OS_FREEBSD) ||\
     defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_DRAGONFLYBSD) ||\
-    defined(OS_ANDROID) || defined(OS_HPUX) || defined(CYGWIN)
+    defined(OS_ANDROID) || defined(OS_HPUX) || defined(CYGWIN) ||\
+    defined(OS_AIX)
 // Use fread/fwrite/fflush on platforms without _unlocked variants
 #define fread_unlocked fread
 #define fwrite_unlocked fwrite

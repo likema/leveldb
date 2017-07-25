@@ -146,7 +146,7 @@ class RandomGenerator {
       pos_ = 0;
       assert(len < data_.size());
     }
-    pos_ += len;
+    pos_ += static_cast<int>(len);
     return Slice(data_.data() + pos_ - len, len);
   }
 };
@@ -954,7 +954,7 @@ class Benchmark {
 }  // namespace leveldb
 
 int main(int argc, char** argv) {
-  FLAGS_write_buffer_size = leveldb::Options().write_buffer_size;
+  FLAGS_write_buffer_size = static_cast<int>(leveldb::Options().write_buffer_size);
   FLAGS_max_file_size = leveldb::Options().max_file_size;
   FLAGS_block_size = leveldb::Options().block_size;
   FLAGS_open_files = leveldb::Options().max_open_files;

@@ -560,6 +560,7 @@ class PosixEnv : public Env {
   pthread_cond_t bgsignal_;
   pthread_t bgthread_;
   bool started_bgthread_;
+  volatile bool running_;
 
   // Entry per Schedule() call
   struct BGItem { void* arg; void (*function)(void*); };
@@ -601,6 +602,7 @@ static intptr_t MaxOpenFiles() {
 
 PosixEnv::PosixEnv()
     : started_bgthread_(false),
+      running_(false),
       mmap_limit_(MaxMmaps()),
       fd_limit_(MaxOpenFiles()) {
   PthreadCall("mutex_init", pthread_mutex_init(&mu_, NULL));
@@ -612,6 +614,7 @@ void PosixEnv::Schedule(void (*function)(void*), void* arg) {
 
   // Start background thread if necessary
   if (!started_bgthread_) {
+    running_ = true;
     started_bgthread_ = true;
     PthreadCall(
         "create thread",
@@ -633,19 +636,29 @@ void PosixEnv::Schedule(void (*function)(void*), void* arg) {
 }
 
 void PosixEnv::BGThread() {
-  while (true) {
+  while (running_) {
     // Wait until there is an item that is ready to run
     PthreadCall("lock", pthread_mutex_lock(&mu_));
-    while (queue_.empty()) {
+    while (queue_.empty() && running_) {
       PthreadCall("wait", pthread_cond_wait(&bgsignal_, &mu_));
     }
 
-    void (*function)(void*) = queue_.front().function;
-    void* arg = queue_.front().arg;
-    queue_.pop_front();
+    void (*function)(void*) = NULL;
+    void* arg = NULL;
+
+    if (running_)
+    {
+      function = queue_.front().function;
+      arg = queue_.front().arg;
+      queue_.pop_front();
+    }
 
     PthreadCall("unlock", pthread_mutex_unlock(&mu_));
-    (*function)(arg);
+
+    if (function)
+    {
+      (*function)(arg);
+    }
   }
 }
 
@@ -673,6 +686,7 @@ void PosixEnv::StartThread(void (*function)(void* arg), void* arg) {
 
 }  // namespace
 
+static const pthread_once_t init_value = PTHREAD_ONCE_INIT;
 static pthread_once_t once = PTHREAD_ONCE_INIT;
 static Env* default_env;
 static void InitDefaultEnv() { default_env = new PosixEnv; }
@@ -690,6 +704,13 @@ void EnvPosixTestHelper::SetReadOnlyMMapLimit(int limit) {
 Env* Env::Default() {
   pthread_once(&once, InitDefaultEnv);
   return default_env;
+}
+
+void Env::UnsafeDeallocate()
+{
+  once = init_value;
+  delete default_env;
+  default_env = NULL;
 }
 
 }  // namespace leveldb

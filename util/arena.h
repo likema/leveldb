@@ -8,7 +8,13 @@
 #include <vector>
 #include <assert.h>
 #include <stddef.h>
-#include <stdint.h>
+
+#if defined(HAVE_STDINT_H) && HAVE_STDINT_H == 1
+#  include <stdint.h>
+#elif defined(HAVE_INTTYPES_H) && HAVE_INTTYPES_H == 1
+#  include <inttypes.h>
+#endif
+
 #include "port/port.h"
 
 namespace leveldb {
@@ -27,7 +33,7 @@ class Arena {
   // Returns an estimate of the total memory usage of data allocated
   // by the arena.
   size_t MemoryUsage() const {
-    return reinterpret_cast<uintptr_t>(memory_usage_.NoBarrier_Load());
+    return reinterpret_cast<size_t>(memory_usage_.NoBarrier_Load());
   }
 
  private:

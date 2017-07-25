@@ -20,7 +20,7 @@
 
 namespace leveldb {
 
-static int TargetFileSize(const Options* options) {
+static size_t TargetFileSize(const Options* options) {
   return options->max_file_size;
 }
 
@@ -83,13 +83,13 @@ Version::~Version() {
   }
 }
 
-int FindFile(const InternalKeyComparator& icmp,
-             const std::vector<FileMetaData*>& files,
-             const Slice& key) {
-  uint32_t left = 0;
-  uint32_t right = files.size();
+size_t FindFile(const InternalKeyComparator& icmp,
+                const std::vector<FileMetaData*>& files,
+                const Slice& key) {
+  size_t left = 0;
+  size_t right = files.size();
   while (left < right) {
-    uint32_t mid = (left + right) / 2;
+    size_t mid = (left + right) / 2;
     const FileMetaData* f = files[mid];
     if (icmp.InternalKeyComparator::Compare(f->largest.Encode(), key) < 0) {
       // Key at "mid.largest" is < "target".  Therefore all
@@ -140,7 +140,7 @@ bool SomeFileOverlapsRange(
   }
 
   // Binary search over file list
-  uint32_t index = 0;
+  size_t index = 0;
   if (smallest_user_key != NULL) {
     // Find the earliest possible internal key for smallest_user_key
     InternalKey small(*smallest_user_key, kMaxSequenceNumber,kValueTypeForSeek);
@@ -204,7 +204,7 @@ class Version::LevelFileNumIterator : public Iterator {
  private:
   const InternalKeyComparator icmp_;
   const std::vector<FileMetaData*>* const flist_;
-  uint32_t index_;
+  size_t index_;
 
   // Backing store for value().  Holds the file number and size.
   mutable char value_buf_[16];
@@ -315,7 +315,7 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key,
     if (num_files == 0) continue;
 
     // Binary search to find earliest index whose largest key >= internal_key.
-    uint32_t index = FindFile(vset_->icmp_, files_[level], internal_key);
+    size_t index = FindFile(vset_->icmp_, files_[level], internal_key);
     if (index < num_files) {
       FileMetaData* f = files_[level][index];
       if (ucmp->Compare(user_key, f->smallest.user_key()) < 0) {
@@ -372,7 +372,7 @@ Status Version::Get(const ReadOptions& options,
       num_files = tmp.size();
     } else {
       // Binary search to find earliest index whose largest key >= ikey.
-      uint32_t index = FindFile(vset_->icmp_, files_[level], ikey);
+      size_t index = FindFile(vset_->icmp_, files_[level], ikey);
       if (index >= num_files) {
         files = NULL;
         num_files = 0;
@@ -1129,7 +1129,7 @@ Status VersionSet::WriteSnapshot(log::Writer* log) {
   return log->AddRecord(record);
 }
 
-int VersionSet::NumLevelFiles(int level) const {
+size_t VersionSet::NumLevelFiles(int level) const {
   assert(level >= 0);
   assert(level < config::kNumLevels);
   return current_->files_[level].size();
@@ -1263,7 +1263,7 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
   // Level-0 files have to be merged together.  For other levels,
   // we will make a concatenating iterator per level.
   // TODO(opt): use concatenating iterator for level-0 if there is no overlap
-  const int space = (c->level() == 0 ? c->inputs_[0].size() + 1 : 2);
+  const size_t space = (c->level() == 0 ? c->inputs_[0].size() + 1 : 2);
   Iterator** list = new Iterator*[space];
   int num = 0;
   for (int which = 0; which < 2; which++) {
@@ -1282,7 +1282,7 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
       }
     }
   }
-  assert(num <= space);
+  assert(num <= static_cast<int>(space));
   Iterator* result = NewMergingIterator(&icmp_, list, num);
   delete[] list;
   return result;

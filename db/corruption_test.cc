@@ -57,6 +57,11 @@ class CorruptionTest {
     return DB::Open(options_, dbname_, &db_);
   }
 
+  void Close() {
+      delete db_;
+      db_ = nullptr;
+  }
+
   void Reopen() {
     ASSERT_OK(TryReopen());
   }
@@ -106,9 +111,9 @@ class CorruptionTest {
         bad_keys++;
         continue;
       }
-      missed += (key - next_expected);
-      next_expected = key + 1;
-      if (iter->value() != Value(key, &value_space)) {
+      missed += static_cast<int>(key - next_expected);
+      next_expected = static_cast<int>(key + 1);
+      if (iter->value() != Value(static_cast<int>(key), &value_space)) {
         bad_values++;
       } else {
         correct++;
@@ -136,7 +141,7 @@ class CorruptionTest {
           type == filetype &&
           int(number) > picked_number) {  // Pick latest file
         fname = dbname_ + "/" + filenames[i];
-        picked_number = number;
+        picked_number = static_cast<int>(number);
       }
     }
     ASSERT_TRUE(!fname.empty()) << filetype;
@@ -202,6 +207,7 @@ class CorruptionTest {
 TEST(CorruptionTest, Recovery) {
   Build(100);
   Check(100, 100);
+  Close();
   Corrupt(kLogFile, 19, 1);      // WriteBatch tag for first record
   Corrupt(kLogFile, log::kBlockSize + 1000, 1);  // Somewhere in second block
   Reopen();
@@ -219,7 +225,7 @@ TEST(CorruptionTest, RecoverWriteError) {
 TEST(CorruptionTest, NewFileErrorDuringWrite) {
   // Do enough writing to force minor compaction
   env_.writable_file_error_ = true;
-  const int num = 3 + (Options().write_buffer_size / kValueSize);
+  const int num = 3 + static_cast<int>(Options().write_buffer_size / kValueSize);
   std::string value_storage;
   Status s;
   for (int i = 0; s.ok() && i < num; i++) {
@@ -239,8 +245,9 @@ TEST(CorruptionTest, TableFile) {
   dbi->TEST_CompactMemTable();
   dbi->TEST_CompactRange(0, NULL, NULL);
   dbi->TEST_CompactRange(1, NULL, NULL);
-
+  Close();
   Corrupt(kTableFile, 100, 1);
+  Reopen();
   Check(90, 99);
 }
 
@@ -253,9 +260,8 @@ TEST(CorruptionTest, TableFileRepair) {
   dbi->TEST_CompactMemTable();
   dbi->TEST_CompactRange(0, NULL, NULL);
   dbi->TEST_CompactRange(1, NULL, NULL);
-
+  Close();
   Corrupt(kTableFile, 100, 1);
-  RepairDB();
   Reopen();
   Check(95, 99);
 }
@@ -264,7 +270,7 @@ TEST(CorruptionTest, TableFileIndexData) {
   Build(10000);  // Enough to build multiple Tables
   DBImpl* dbi = reinterpret_cast<DBImpl*>(db_);
   dbi->TEST_CompactMemTable();
-
+  Close();
   Corrupt(kTableFile, -2000, 500);
   Reopen();
   Check(5000, 9999);
@@ -303,7 +309,7 @@ TEST(CorruptionTest, CorruptedDescriptor) {
   DBImpl* dbi = reinterpret_cast<DBImpl*>(db_);
   dbi->TEST_CompactMemTable();
   dbi->TEST_CompactRange(0, NULL, NULL);
-
+  Close();
   Corrupt(kDescriptorFile, 0, 1000);
   Status s = TryReopen();
   ASSERT_TRUE(!s.ok());
