@@ -363,7 +363,7 @@ class PosixEnv : public Env {
 
     boost::system::error_code ec;
     boost::filesystem::directory_iterator current(dir, ec);
-    if (ec != 0) {
+    if (ec) {
       return Status::IOError(dir, ec.message());
     }
 
@@ -383,7 +383,7 @@ class PosixEnv : public Env {
 
     Status result;
 
-    if (ec != 0) {
+    if (ec) {
       result = Status::IOError(fname, ec.message());
     }
 
@@ -424,7 +424,7 @@ class PosixEnv : public Env {
     Status result;
 
     *size = static_cast<uint64_t>(boost::filesystem::file_size(fname, ec));
-    if (ec != 0) {
+    if (ec) {
       *size = 0;
        result = Status::IOError(fname, ec.message());
     }
@@ -439,7 +439,7 @@ class PosixEnv : public Env {
 
     Status result;
 
-    if (ec != 0) {
+    if (ec) {
       result = Status::IOError(src, ec.message());
     }
 
@@ -498,7 +498,7 @@ class PosixEnv : public Env {
     boost::system::error_code ec;
     boost::filesystem::path temp_dir =
         boost::filesystem::temp_directory_path(ec);
-    if (ec != 0) {
+    if (ec) {
       temp_dir = "tmp";
     }
 

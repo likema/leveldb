@@ -203,7 +203,7 @@ IF (WIN32 AND MINGW)
         filesystem
         system
         chrono
-        thread_win32)
+        thread)
     INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIRS})
     TARGET_LINK_LIBRARIES (leveldb ${SNAPPY_LIBRARIES} ${Boost_LIBRARIES})
 ELSE (WIN32 AND MINGW)
