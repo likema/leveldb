@@ -31,6 +31,8 @@
 #ifndef STORAGE_LEVELDB_PORT_PORT_WIN_H_
 #define STORAGE_LEVELDB_PORT_PORT_WIN_H_
 
+#include <stdio.h>
+
 #define snprintf _snprintf
 #ifdef _MSC_VER
 #define close _close
